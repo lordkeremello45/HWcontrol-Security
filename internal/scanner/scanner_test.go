@@ -107,3 +107,14 @@ func TestScanRootSkipsSymlinkedFile(t *testing.T) {
 		t.Fatal("expected skipped symlink to make the scan incomplete")
 	}
 }
+
+func TestLoadSHA256ListRejectsOversizedFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "hashes.txt")
+	content := strings.Repeat("a", MaxHashListBytes+1)
+	if err := os.WriteFile(path, []byte(content), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadSHA256List(path); err == nil {
+		t.Fatal("expected oversized hash list to be rejected")
+	}
+}
