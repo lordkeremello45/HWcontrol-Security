@@ -50,10 +50,10 @@ The EICAR string is a harmless industry-standard test pattern, not malware. A ha
 - The scan is best-effort and cannot establish that a live operating system is malware-free.
 - It does not yet provide broad malware signatures, heuristic/behavioral detection, archive recursion, memory scanning, real-time monitoring, automatic signature updates, quarantine, or false-positive review.
 - It is not yet wired into HWcontrol2.0's GUI, Go Bridge, installer, or update flow. Do not describe it as an integrated product feature until those changes are implemented and tested.
-- This initial implementation uses Go's portable file APIs; filesystem race resistance and platform-specific hardening require additional review before privileged or unattended use.
+- The scanner anchors file opens to a Go 1.24+ `os.Root` handle and checks that the opened root matches the initial directory. This reduces path-replacement and traversal risk, but does not eliminate every filesystem race or replace platform-specific review. Run it without elevated privileges unless a documented use case requires otherwise.
 - Continue to use and keep enabled the platform's established security software, including Microsoft Defender where applicable. This tool does not attempt to replace or disable it.
 
-## Safe next integration steps
+## Research references\n\n- [Go: Traversal-resistant file APIs (`os.Root`)](https://go.dev/blog/osroot) — rationale for anchoring file access to a directory handle.\n- [YARA documentation](https://yara.readthedocs.io/en/stable/) — established rule-based file pattern detection; evaluate as a later detection engine rather than inventing a proprietary rule language.\n- [NIST SP 800-83 Rev. 1](https://csrc.nist.gov/pubs/sp/800/83/r1/final) — malware prevention, handling, and incident-response guidance.\n\n## Safe next integration steps
 
 1. Define an explicit scan request/result contract between the HWcontrol2.0 UI and local security service; validate paths and authorization in the service, not the UI.
 2. Run scans with least privilege and bounded resource use; never grant the scanner hardware-control authority.
