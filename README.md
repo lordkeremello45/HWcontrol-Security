@@ -21,8 +21,7 @@ HWcontrol Security is the defensive security layer for [HWcontrol2.0](https://gi
 
 Windows 10/11 x64, Debian/Ubuntu-family Linux x64, and macOS 14+ Apple Silicon are project targets. Each capability must be validated independently on each platform before being marked VERIFIED.
 
-## Development
-
+## Security policy core (Ada/SPARK prototype)\n\nAn isolated Ada policy prototype lives in [`ada/`](ada/). It denies actions unless authentication, replay protection, and input validation have already passed; update signatures/version policy, quarantine consent, and hardware policy are action-specific gates. It is **not yet connected to the Go Bridge and has not been formally proved**. See [the policy notes](docs/spark-policy.md).\n\n## Development\n
 The scanner implementation and tests live in this repository. Do not treat the project as production antivirus until threat intelligence, authenticated update delivery, false-positive handling, a safe user-authorized response workflow, and platform-specific testing are implemented and reviewed.
 
 ## Related project
