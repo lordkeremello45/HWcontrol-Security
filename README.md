@@ -4,8 +4,8 @@ HWcontrol Security is the defensive security layer for [HWcontrol2.0](https://gi
 
 ## Current status
 
-- **IMPLEMENTED IN HWcontrol2.0:** bridge request authentication and replay protection, runtime integrity monitoring, a separate Security Guardian/canary, a SPARK fail-closed hardware-control policy, and release checksum/provenance workflows are documented in the main repository's [security policy](https://github.com/lordkeremello45/HWcontrol2.0/blob/main/SECURITY.md).
-- **PLANNED HERE:** a separately testable, read-only local file scanner that can apply an explicit SHA-256 denylist and detect the standard EICAR antivirus test string.
+- **DOCUMENTED IN HWcontrol2.0:** the main repository's [security policy](https://github.com/lordkeremello45/HWcontrol2.0/blob/main/SECURITY.md) describes bridge authentication, integrity monitoring, SPARK policy, and release-integrity controls. Their actual implementation and test status must be verified against code and CI before treating them as verified capabilities.
+- **IMPLEMENTED HERE (initial stage):** a separately testable, read-only local scanner for exact SHA-256 denylist matches and the standard EICAR test string. It is not yet integrated into HWcontrol2.0.
 - **NOT CLAIMED:** broad malware-family coverage, behavioral detection, real-time operating-system-wide protection, automatic remediation, or replacement of Microsoft Defender/other platform security tools.
 
 ## Security principles
@@ -23,7 +23,7 @@ Windows 10/11 x64, Debian/Ubuntu-family Linux x64, and macOS 14+ Apple Silicon a
 
 ## Development
 
-The scanner implementation and tests will live in this repository. Do not treat the project as production antivirus until threat intelligence, authenticated update delivery, false-positive handling, a safe user-authorized response workflow, and platform-specific testing are implemented and reviewed.
+The scanner implementation and tests live in this repository. Do not treat the project as production antivirus until threat intelligence, authenticated update delivery, false-positive handling, a safe user-authorized response workflow, and platform-specific testing are implemented and reviewed.
 
 ## Related project
 
