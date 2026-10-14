@@ -38,3 +38,8 @@ Do not treat the project as production antivirus until threat intelligence, auth
 
 - [HWcontrol2.0 source](https://github.com/lordkeremello45/HWcontrol2.0)
 - [HWcontrol2.0 security policy](https://github.com/lordkeremello45/HWcontrol2.0/blob/main/SECURITY.md)
+
+
+## Threat intelligence
+
+See [the threat-intelligence ingestion contract](docs/threat-intelligence.md) for the signed snapshot verifier and unsigned MalwareBazaar candidate importer. No production feed or automatic update is enabled.
