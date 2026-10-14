@@ -39,3 +39,7 @@ threat-feed.local
 .idea/
 .DS_Store
 Thumbs.db
+
+# Ada/SPARK build products
+/ada/obj/
+/ada/bin/
