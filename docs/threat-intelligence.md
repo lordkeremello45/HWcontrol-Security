@@ -1,48 +1,55 @@
-# Threat-intelligence feed — first secure ingestion step
+# Threat-intelligence ingestion
 
-**Status: VERIFIER IMPLEMENTED IN FEATURE BRANCH; NO LIVE FEED OR PRODUCTION TRUST KEY CONFIGURED.**
+**Status: SIGNATURE VERIFIER AND UNSIGNED MALWAREBAZAAR CANDIDATE IMPORTER IMPLEMENTED IN THIS FEATURE BRANCH. NO PRODUCTION FEED, TRUSTED PUBLISHER KEY, OR AUTOMATIC UPDATE IS CONFIGURED.**
 
-This package is a validation boundary, not a malware database subscription and not an automatic updater. It intentionally does not download data, embed a public key, install a feed, or change scanner behavior.
+## Initial provider
 
-## Signed snapshot format
+The adapter targets the official MalwareBazaar Community API endpoint, `https://mb-api.abuse.ch/api/v1/`, using its `recent_detections` query. The provider requires an Auth-Key and states that community use is subject to fair-use terms; commercial or for-profit use may require an enhanced commercial API subscription. Review current terms before shipping or redistributing data.
 
-The publisher produces a UTF-8 JSON payload with this schema:
+Official references:
+- API and response fields: https://bazaar.abuse.ch/api/
+- FAQ and fair-use notes: https://bazaar.abuse.ch/faq/
+- Provider source repository: https://github.com/abusech/MalwareBazaar
 
-```json
-{
-  "version": 1,
-  "generated_at": "2026-10-14T00:00:00Z",
-  "expires_at": "2026-10-21T00:00:00Z",
-  "entries": [
-    {
-      "sha256": "64 lowercase hexadecimal characters",
-      "family": "publisher-defined label",
-      "source": "feed or rule provenance label"
-    }
-  ]
-}
+The importer retrieves hash metadata only. It does **not** download malware samples, submit files, execute samples, or upload local information. It consumes only SHA-256 and family-label fields; extra upstream metadata is ignored.
+
+## Create an unsigned candidate snapshot
+
+From the repository root:
+
+```sh
+go test -race ./...
+go run ./cmd/hwintel-import -hours 48 -version 1 -out threat-intel-candidate.json
 ```
 
-The detached signature is a 128-character hexadecimal Ed25519 signature over the **exact payload bytes**. Any byte-level change invalidates the signature. The public key must come from a trusted, independently provisioned configuration or signed application release; downloading a key next to the feed does not establish trust.
+Set `MALWAREBAZAAR_AUTH_KEY` through local secret storage or a shell environment. Do not put it in source code, command-line arguments, logs, issue reports, or commits. The importer sends it in the HTTPS `Auth-Key` header to the fixed official endpoint; redirects are not followed.
 
-The verifier fails closed for invalid signatures, invalid key/signature encoding, unknown JSON fields, trailing data, invalid or duplicate digests, invalid timestamps, expired/not-yet-valid snapshots, oversized payloads, excessive entries, and versions below the caller's persisted minimum accepted version.
+The importer:
+- limits the query window to 1–168 hours;
+- uses bounded request timeouts and response size;
+- rejects malformed responses, invalid SHA-256 digests and missing family labels;
+- de-duplicates repeated digests;
+- creates the candidate with restrictive local permissions and refuses to overwrite an existing file;
+- marks the output as unsigned and does not activate it.
 
-## Integration requirements before production use
+The default output expires seven days after generation. This is a candidate policy value, not a claim that provider data is complete or guaranteed current.
 
-1. Select a reputable threat-intelligence provider and verify its licensing, redistribution terms, update cadence, hash semantics, and false-positive reporting process.
-2. Implement the feed adapter for that provider's actual format; do not relabel an arbitrary dataset as an official malware database.
-3. Generate and provision a production Ed25519 key outside source control. Define key rotation and recovery before release.
-4. Persist the highest accepted version in tamper-resistant state appropriate to each platform. A caller-supplied minimum alone is not durable anti-rollback protection.
-5. Verify the signature before parsing and indexing. Keep download size, timeout, redirect policy, decompression and storage limits bounded.
-6. Atomically stage and activate only a verified snapshot. Preserve the last known-good database when refresh fails; mark intelligence stale/unknown once the prior snapshot expires.
-7. Record feed name, version, generation/expiry timestamps, and digest for diagnostics. Do not upload user files or telemetry to the feed provider.
-8. Keep scanning read-only. A match is a finding, not authority to delete files, quarantine them, kill processes, or change hardware permissions.
-9. Test the end-to-end updater, trusted key lifecycle, persistence, rollback, interrupted writes, stale feeds, false positives and all supported platforms.
+## Review and signing gate
 
-## Detection scope
+The output JSON matches the schema accepted by `internal/threatintel.VerifyAndLoad`, but **it is unsigned and must be rejected by the verifier until signed**.
 
-The initial scanner currently recognizes the exact EICAR test string and exact SHA-256 hashes supplied by a caller. Loading an authenticated database is a prerequisite for trustworthy hash matching, but does not provide broad detection by itself. Hashes only identify exact byte sequences already represented in the feed; they do not detect unknown variants, behavior, memory-only threats, or a live backdoor.
+Before publication:
+1. Review provider terms, record provenance, unexpected volume changes and false-positive handling.
+2. Validate that every record maps to the provider's SHA-256 field and family label as expected.
+3. Assign a monotonically increasing release version using the project's release process.
+4. Sign the exact candidate bytes with the project's offline Ed25519 release key. Keep the private key outside the repository and end-user installations.
+5. Publish the payload and detached signature through a controlled release process; provision the public key independently from the feed.
+6. Test tampering, expired feeds, key rotation, rollback, interrupted download, and recovery before connecting this to automatic updates.
 
-SHA-256 remains the initial file-identification algorithm. Adding SHA-512 or SHA-3 digests can help with independent integrity formats, but running every SHA variant does not increase malware intelligence coverage. The feed publisher's authenticated signature is the trust control; a checksum alone is not publisher authentication.
+Do not add a private signing key or production API key to this repository. HTTPS authenticates the endpoint during retrieval; it does not make an arbitrary downloaded file an independently verifiable signed release artifact.
 
-Keep Microsoft Defender and other established platform security products enabled. This work does not claim real-time OS-wide protection or the ability to block a privileged attacker.
+## Current detection scope and limits
+
+The scanner currently detects the EICAR test string and exact SHA-256 values supplied by its caller. The candidate importer is not connected to scanner runtime. Even after a signed database is integrated, hash matching detects exact known samples represented by the feed; it does not establish broad malware-family coverage, behavior detection, memory scanning, backdoor prevention, or real-time OS-wide protection.
+
+SHA-256 is the initial file identifier. Adding every SHA family does not substitute for trustworthy threat intelligence, behavioral detection, or operating-system access controls. Keep Microsoft Defender and other established platform security products enabled.
