@@ -92,6 +92,18 @@ func ScanRoot(root string, denylist map[string]struct{}) (Result, error) {
 		return result, errors.New("scan root must be a real directory, not a symlink")
 	}
 
+	// Anchor all file opens to a directory handle. This prevents a path replacement
+	// from redirecting an open outside the selected scan root (Go 1.24+).
+	rootFS, err := os.OpenRoot(root)
+	if err != nil {
+		return result, fmt.Errorf("open scan root: %w", err)
+	}
+	defer rootFS.Close()
+	openedRootInfo, err := rootFS.Stat(".")
+	if err != nil || !os.SameFile(rootInfo, openedRootInfo) {
+		return result, errors.New("scan root changed while it was being opened")
+	}
+
 	err = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", path, walkErr))
@@ -110,7 +122,12 @@ func ScanRoot(root string, denylist map[string]struct{}) (Result, error) {
 			return nil
 		}
 
-		f, err := os.Open(path)
+		rel, relErr := filepath.Rel(root, path)
+		if relErr != nil || rel == "." || filepath.IsAbs(rel) {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: unsafe relative path", path))
+			return nil
+		}
+		f, err := rootFS.Open(rel)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: open failed: %v", path, err))
 			return nil
