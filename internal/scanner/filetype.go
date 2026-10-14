@@ -141,6 +141,9 @@ func IdentifyFileType(path string, header []byte) string {
 }
 
 func identifyMagic(b []byte) string {
+	if bytes.HasPrefix(b, []byte("#!")) {
+		return "script:interpreter"
+	}
 	switch {
 	case len(b) >= 2 && b[0] == 'M' && b[1] == 'Z':
 		return "executable:windows-pe"
