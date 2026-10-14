@@ -77,3 +77,33 @@ func TestScanRootRejectsSymlinkRoot(t *testing.T) {
 		t.Fatal("expected symlink root to be rejected")
 	}
 }
+
+func TestScanRootSkipsSymlinkedFile(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, "root")
+	if err := os.Mkdir(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(parent, "outside.bin")
+	if err := os.WriteFile(target, []byte(EICARTestString), 0600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(root, "linked.bin")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+
+	result, err := ScanRoot(root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.FilesScanned != 0 {
+		t.Fatalf("FilesScanned = %d, want 0", result.FilesScanned)
+	}
+	if len(result.Findings) != 0 {
+		t.Fatalf("findings = %d, want 0 for a skipped symlink", len(result.Findings))
+	}
+	if len(result.Errors) == 0 {
+		t.Fatal("expected skipped symlink to make the scan incomplete")
+	}
+}
