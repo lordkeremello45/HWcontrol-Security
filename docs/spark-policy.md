@@ -24,7 +24,7 @@ gprbuild -P ada/security_policy.gpr
 ./ada/obj/policy_smoke_test
 ```
 
-The smoke test uses Ada assertions to exercise key allow/deny paths. A successful compile or smoke test is not a formal proof.
+The smoke test exhaustively checks all 512 combinations (4 actions × 2⁷ Boolean input combinations) against an independently written expected-decision table using Ada assertions. This catches decision-table regressions but is not a formal proof.
 
 ## SPARK proof
 
