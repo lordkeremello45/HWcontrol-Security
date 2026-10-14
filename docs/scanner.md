@@ -75,3 +75,10 @@ The EICAR string is a harmless industry-standard test pattern, not malware. A ha
 The scanner hashes and checks every regular file it can safely open, regardless of filename extension. JSON results now include `files_by_type`; detections include a `file_type` classification. The classifier checks a limited set of magic-byte signatures first (including PE/MZ, ELF, Mach-O/fat, ZIP, 7z, RAR, gzip, xz, zstd, CAB, OLE, Debian, RPM, WASM and TAR) and falls back to an extension-based hint when no known signature is found. Files with no extension are classified as `unknown:extensionless` unless a recognized signature is present.
 
 **Important limitations:** this is identification, not complete parsing or malware detection. Some formats share signatures (for example ZIP-based installers), and the classifier does not validate package structure, signatures, nested archive contents, or all format variants. Extension fallback is explicitly not proof of actual format. Archive recursion and format-specific validation remain planned work.
+
+
+## Bounded archive-member scanning
+
+The scanner now inspects regular members of ZIP and uncompressed TAR archives without extracting files to disk. It applies limits of 4,096 members, 64 MiB per member, and 256 MiB total declared expansion per archive. Member content is checked against the same exact SHA-256 denylist and EICAR test pattern; findings identify the member as `outer-file!member-name`.
+
+This is deliberately not recursive yet. gzip-compressed TAR, 7z, RAR, XIP, package-specific nested containers, encrypted archives, and nested archives are not unpacked by this step. Unsupported archive formats receive only an outer-file scan, so results must not imply full archive-content coverage. ZIP/TAR structural or member-read errors are reported as scan errors. Archive paths are labels only and are never extracted or used to write files.

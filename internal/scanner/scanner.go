@@ -166,13 +166,19 @@ func ScanRoot(root string, denylist map[string]struct{}) (Result, error) {
 		}
 		fileType := IdentifyFileType(path, header[:headerN])
 		hash, eicarFound, readErr := hashAndFind(f)
+		if readErr != nil {
+			_ = f.Close()
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: read failed: %v", path, readErr))
+			return nil
+		}
+		archiveFindings, archiveErrors := inspectArchiveEntries(f, info.Size(), fileType, path, denylist)
+		for _, archiveErr := range archiveErrors {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: archive inspection incomplete: %v", path, archiveErr))
+		}
+		result.Findings = append(result.Findings, archiveFindings...)
 		closeErr := f.Close()
-		if readErr != nil || closeErr != nil {
-			cause := readErr
-			if cause == nil {
-				cause = closeErr
-			}
-			result.Errors = append(result.Errors, fmt.Sprintf("%s: read failed: %v", path, cause))
+		if closeErr != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: close failed: %v", path, closeErr))
 			return nil
 		}
 		result.FilesScanned++
