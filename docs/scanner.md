@@ -28,7 +28,8 @@ To use a local SHA-256 denylist, pass a UTF-8 text file containing one 64-charac
 go run ./cmd/hwscan -root ./directory-to-scan -hashes ./known-bad-sha256.txt
 ```
 
-Exit codes:
+## Exit codes
+
 - `0`: scan completed with no findings.
 - `1`: one or more findings.
 - `2`: invalid arguments/configuration or scan could not start.
@@ -53,9 +54,15 @@ The EICAR string is a harmless industry-standard test pattern, not malware. A ha
 - The scanner anchors file opens to a Go 1.24+ `os.Root` handle and checks that the opened root matches the initial directory. This reduces path-replacement and traversal risk, but does not eliminate every filesystem race or replace platform-specific review. Run it without elevated privileges unless a documented use case requires otherwise.
 - Continue to use and keep enabled the platform's established security software, including Microsoft Defender where applicable. This tool does not attempt to replace or disable it.
 
-## Research references\n\n- [Go: Traversal-resistant file APIs (`os.Root`)](https://go.dev/blog/osroot) — rationale for anchoring file access to a directory handle.\n- [YARA documentation](https://yara.readthedocs.io/en/stable/) — established rule-based file pattern detection; evaluate as a later detection engine rather than inventing a proprietary rule language.\n- [NIST SP 800-83 Rev. 1](https://csrc.nist.gov/pubs/sp/800/83/r1/final) — malware prevention, handling, and incident-response guidance.\n\n## Safe next integration steps
+## Research references
 
-1. Define an explicit scan request/result contract between the HWcontrol2.0 UI and local security service; validate paths and authorization in the service, not the UI.
+- [Go: Traversal-resistant file APIs (`os.Root`)](https://go.dev/blog/osroot) — rationale for anchoring file access to a directory handle.
+- [YARA documentation](https://yara.readthedocs.io/en/stable/) — established rule-based file pattern detection; evaluate as a later detection engine rather than inventing a proprietary rule language.
+- [NIST SP 800-83 Rev. 1](https://csrc.nist.gov/pubs/sp/800/83/r1/final) — malware prevention, handling, and incident-response guidance.
+
+## Safe next integration steps
+
+1. Inspect the actual HWcontrol2.0 Bridge authentication, routing, IPC transport, and tests before selecting a concrete interface. See the [proposed integration contract](bridge-integration.md).
 2. Run scans with least privilege and bounded resource use; never grant the scanner hardware-control authority.
 3. Treat scan errors and stale/unavailable intelligence as **INCOMPLETE/UNKNOWN**, never as clean.
 4. Add authenticated, signed threat-intelligence distribution before shipping any denylist; a checksum alone is not publisher authentication.
