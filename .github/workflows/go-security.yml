@@ -33,16 +33,18 @@ jobs:
           govulncheck ./...
 
   ada-spark-policy:
-    name: Ada policy compile and smoke tests
+    name: Ada policy compile, smoke tests, and SPARK proof
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install GNAT and GPRbuild
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes gnat gprbuild
+      - name: Install GNAT, GPRbuild, and GNATprove using Alire
+        uses: alire-project/alr-install@v2
+        with:
+          crates: gnat_native gprbuild gnatprove
       - name: Compile policy with assertions
         run: gprbuild -P ada/security_policy.gpr
-      - name: Run policy smoke tests
+      - name: Run exhaustive policy truth-table tests
         run: ./ada/bin/policy_smoke_test
+      - name: Run SPARK flow analysis and proof
+        run: gnatprove -P ada/security_policy.gpr --mode=prove
