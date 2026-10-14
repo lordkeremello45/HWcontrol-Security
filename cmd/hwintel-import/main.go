@@ -22,7 +22,17 @@ type candidate struct {
 	Entries     []malwarebazaar.Entry   `json:"entries"`
 }
 
+type fetchRecentFunc func(context.Context, int) ([]malwarebazaar.Entry, error)
+
 func run(args []string, getenv func(string) string, now func() time.Time, stdout, stderr *os.File) int {
+	return runWithFetch(args, getenv, now, stdout, stderr, func(ctx context.Context, hours int) ([]malwarebazaar.Entry, error) {
+		return (malwarebazaar.Client{AuthKey: getenv("MALWAREBAZAAR_AUTH_KEY")}).FetchRecent(ctx, hours)
+	})
+}
+
+// runWithFetch separates CLI validation/file handling from network access so the
+// security-sensitive output path can be tested without live credentials or API calls.
+func runWithFetch(args []string, getenv func(string) string, now func() time.Time, stdout, stderr *os.File, fetch fetchRecentFunc) int {
 	flags := flag.NewFlagSet("hwintel-import", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	hours := flags.Int("hours", 48, "lookback window in hours (1-168)")
@@ -47,7 +57,7 @@ func run(args []string, getenv func(string) string, now func() time.Time, stdout
 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	entries, err := (malwarebazaar.Client{AuthKey: key}).FetchRecent(ctx, *hours)
+	entries, err := fetch(ctx, *hours)
 	if err != nil {
 		fmt.Fprintf(stderr, "import failed: %v\n", err)
 		return 1
