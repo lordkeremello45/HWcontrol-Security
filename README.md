@@ -5,6 +5,7 @@ HWcontrol Security is the defensive security layer for [HWcontrol2.0](https://gi
 ## Current status
 
 - **IMPLEMENTED HERE (initial stage):** a separately testable, read-only local scanner for exact SHA-256 denylist matches and the standard EICAR test string. It is not yet integrated into HWcontrol2.0.
+- **IMPLEMENTED IN THIS FEATURE BRANCH:** an isolated Ed25519-signed threat-intelligence snapshot verifier with expiry, version-floor, schema, digest, duplicate-entry, and size checks. No production feed, trusted publisher key, downloader, or scanner integration is configured; see [the feed contract](docs/threat-intelligence.md).
 - **IMPLEMENTED AS A PROTOTYPE:** an isolated Ada/SPARK policy unit with deterministic fail-closed rules. Its CI proof covers that unit and its modeled assumptions only; it is not integrated into the Go Bridge and does not prove end-to-end authorization.
 - **NOT CLAIMED:** broad malware-family coverage, behavioral detection, real-time operating-system-wide protection, automatic remediation, or replacement of Microsoft Defender/other platform security tools.
 
