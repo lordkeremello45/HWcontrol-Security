@@ -28,7 +28,7 @@ The smoke test exhaustively checks all 512 combinations (4 actions × 2⁷ Boole
 
 ## SPARK proof
 
-With a compatible GNATprove installation:
+CI installs GNAT, GPRbuild, and GNATprove through the Alire toolchain installer and runs the following command on every push and pull request. Locally, with a compatible GNATprove installation:
 
 ```sh
 gnatprove -P ada/security_policy.gpr --mode=prove
