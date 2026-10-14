@@ -54,7 +54,17 @@ func LoadSHA256List(path string) (map[string]struct{}, error) {
 		return nil, errors.New("hash list must be a regular file no larger than 4 MiB")
 	}
 
-	s := bufio.NewScanner(f)
+	// Enforce the limit while reading as well as checking the initial stat size:
+	// the file may grow after Stat returns.
+	contents, err := io.ReadAll(io.LimitReader(f, MaxHashListBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("read hash list: %w", err)
+	}
+	if len(contents) > MaxHashListBytes {
+		return nil, errors.New("hash list exceeds 4 MiB")
+	}
+
+	s := bufio.NewScanner(bytes.NewReader(contents))
 	s.Buffer(make([]byte, 1024), maxLineBytes)
 	for line := 1; s.Scan(); line++ {
 		value := strings.TrimSpace(s.Text())
