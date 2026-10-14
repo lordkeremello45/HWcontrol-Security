@@ -25,15 +25,17 @@ const (
 const EICARTestString = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
 
 type Finding struct {
-	Path   string `json:"path"`
-	SHA256 string `json:"sha256"`
-	Reason string `json:"reason"`
+	Path     string `json:"path"`
+	SHA256   string `json:"sha256"`
+	FileType string `json:"file_type"`
+	Reason   string `json:"reason"`
 }
 
 type Result struct {
-	FilesScanned int       `json:"files_scanned"`
-	Findings     []Finding `json:"findings"`
-	Errors       []string  `json:"errors,omitempty"`
+	FilesScanned int            `json:"files_scanned"`
+	FilesByType  map[string]int `json:"files_by_type"`
+	Findings     []Finding      `json:"findings"`
+	Errors       []string       `json:"errors,omitempty"`
 }
 
 func LoadSHA256List(path string) (map[string]struct{}, error) {
@@ -91,7 +93,7 @@ func LoadSHA256List(path string) (map[string]struct{}, error) {
 // any files. Errors are returned in the result so a partial scan cannot be mistaken
 // for a clean scan. The caller must treat any error as an incomplete result.
 func ScanRoot(root string, denylist map[string]struct{}) (Result, error) {
-	result := Result{Findings: []Finding{}, Errors: []string{}}
+	result := Result{Findings: []Finding{}, FilesByType: map[string]int{}, Errors: []string{}}
 	if strings.TrimSpace(root) == "" {
 		return result, errors.New("scan root is required")
 	}
@@ -150,6 +152,19 @@ func ScanRoot(root string, denylist map[string]struct{}) (Result, error) {
 			return nil
 		}
 
+		header := make([]byte, 512)
+		headerN, headerErr := f.Read(header)
+		if headerErr != nil && headerErr != io.EOF {
+			_ = f.Close()
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: format read failed: %v", path, headerErr))
+			return nil
+		}
+		if _, seekErr := f.Seek(0, io.SeekStart); seekErr != nil {
+			_ = f.Close()
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: rewind failed: %v", path, seekErr))
+			return nil
+		}
+		fileType := IdentifyFileType(path, header[:headerN])
 		hash, eicarFound, readErr := hashAndFind(f)
 		closeErr := f.Close()
 		if readErr != nil || closeErr != nil {
@@ -161,6 +176,7 @@ func ScanRoot(root string, denylist map[string]struct{}) (Result, error) {
 			return nil
 		}
 		result.FilesScanned++
+		result.FilesByType[fileType]++
 		reason := ""
 		if _, matched := denylist[hash]; matched {
 			reason = "sha256-denylist-match"
@@ -177,7 +193,7 @@ func ScanRoot(root string, denylist map[string]struct{}) (Result, error) {
 			if relErr != nil {
 				rel = path
 			}
-			result.Findings = append(result.Findings, Finding{Path: rel, SHA256: hash, Reason: reason})
+			result.Findings = append(result.Findings, Finding{Path: rel, SHA256: hash, FileType: fileType, Reason: reason})
 		}
 		return nil
 	})

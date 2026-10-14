@@ -43,3 +43,8 @@ Do not treat the project as production antivirus until threat intelligence, auth
 ## Threat intelligence
 
 See [the threat-intelligence ingestion contract](docs/threat-intelligence.md) for the signed snapshot verifier and unsigned MalwareBazaar candidate importer. No production feed or automatic update is enabled.
+
+
+## File-format scope
+
+The scanner evaluates regular files without requiring a recognized extension and reports basic file-format classifications. Initial magic-byte recognition covers common PE/ELF/Mach-O binaries, ZIP/7z/RAR/gzip/xz/zstd/TAR archives, CAB/OLE containers, Debian/RPM packages and WASM. Extension hints also cover common Windows, macOS and Linux package, library, and script suffixes. This is an initial classifier only: it does not yet unpack and recursively inspect archives or verify every platform package signature. See [scanner limitations and format scope](docs/scanner.md).

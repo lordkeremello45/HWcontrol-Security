@@ -68,3 +68,10 @@ The EICAR string is a harmless industry-standard test pattern, not malware. A ha
 4. Add authenticated, signed threat-intelligence distribution before shipping any denylist; a checksum alone is not publisher authentication.
 5. Add consent-based remediation only after quarantine storage, rollback, false-positive recovery, and platform-specific permission handling have been reviewed.
 6. Add integration tests and installer/package validation for Windows 10/11 x64, Linux x64, and macOS 14+ Apple Silicon independently.
+
+
+## File-format classification (initial implementation)
+
+The scanner hashes and checks every regular file it can safely open, regardless of filename extension. JSON results now include `files_by_type`; detections include a `file_type` classification. The classifier checks a limited set of magic-byte signatures first (including PE/MZ, ELF, Mach-O/fat, ZIP, 7z, RAR, gzip, xz, zstd, CAB, OLE, Debian, RPM, WASM and TAR) and falls back to an extension-based hint when no known signature is found. Files with no extension are classified as `unknown:extensionless` unless a recognized signature is present.
+
+**Important limitations:** this is identification, not complete parsing or malware detection. Some formats share signatures (for example ZIP-based installers), and the classifier does not validate package structure, signatures, nested archive contents, or all format variants. Extension fallback is explicitly not proof of actual format. Archive recursion and format-specific validation remain planned work.
