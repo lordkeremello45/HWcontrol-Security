@@ -174,14 +174,12 @@ func identifyMagic(b []byte) string {
 		return "container:cabinet"
 	case len(b) >= 4 && bytes.Equal(b[:4], []byte{0xd0, 0xcf, 0x11, 0xe0}):
 		return "container:ole"
-	case len(b) >= 4 && bytes.Equal(b[:4], []byte{0x60, 0xea}):
-		return "package:debian"
+	case len(b) >= 8 && bytes.Equal(b[:8], []byte{'!', '<', 'a', 'r', 'c', 'h', '>', '\n'}):
+		return "package:debian-or-ar"
 	case len(b) >= 4 && bytes.Equal(b[:4], []byte{0xed, 0xab, 0xee, 0xdb}):
 		return "package:rpm"
 	case len(b) >= 4 && bytes.Equal(b[:4], []byte{0x00, 0x61, 0x73, 0x6d}):
 		return "executable:wasm"
-	case len(b) >= 4 && bytes.Equal(b[:4], []byte{0xca, 0xfe, 0xba, 0xbe}):
-		return "archive:java-or-fat-binary"
 	}
 	if len(b) >= 262 && string(b[257:262]) == "ustar" {
 		return "archive:tar"
