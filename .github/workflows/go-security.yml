@@ -1,4 +1,4 @@
-name: Go Security Scanner
+name: HWcontrol Security CI
 
 on:
   push:
@@ -10,8 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    name: Go test and vet
+  go:
+    name: Go scanner tests and vulnerability analysis
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -21,9 +21,28 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - name: Test
+      - name: Test with race detector
         run: go test -race ./...
-      - name: Vet
+      - name: Static analysis
         run: go vet ./...
-      - name: Build
+      - name: Build scanner
         run: go build ./cmd/hwscan
+      - name: Dependency vulnerability analysis
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+          govulncheck ./...
+
+  ada-spark-policy:
+    name: Ada policy compile and smoke tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install GNAT and GPRbuild
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gnat gprbuild
+      - name: Compile policy with assertions
+        run: gprbuild -P ada/security_policy.gpr
+      - name: Run policy smoke tests
+        run: ./ada/bin/policy_smoke_test
