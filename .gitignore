@@ -1,0 +1,41 @@
+# Go binaries and test outputs
+/hwscan
+*.exe
+*.test
+*.out
+*.prof
+coverage.txt
+coverage.out
+
+# Go workspace files (keep go.mod and go.sum tracked)
+/go.work
+/go.work.sum
+
+# Build/package outputs
+/dist/
+/build/
+/release/
+*.zip
+*.tar
+*.tar.gz
+*.tar.zst
+*.msi
+*.msix
+*.dmg
+*.pkg
+*.deb
+
+# Local scanner data; never commit real threat feeds or user scan output
+*.scan.json
+*.scan.log
+local-hashes.txt
+threat-feed.local
+.env
+.env.*
+!.env.example
+
+# IDE and OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
