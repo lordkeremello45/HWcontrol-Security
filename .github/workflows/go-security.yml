@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   go:
-    name: Go scanner tests and vulnerability analysis
+    name: Go scanner and threat-intelligence tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,8 +25,10 @@ jobs:
         run: go test -race ./...
       - name: Static analysis
         run: go vet ./...
-      - name: Build scanner
-        run: go build ./cmd/hwscan
+      - name: Build scanner and threat-intelligence importer
+        run: |
+          go build ./cmd/hwscan
+          go build ./cmd/hwintel-import
       - name: Dependency vulnerability analysis
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
