@@ -1,6 +1,6 @@
 # HWcontrol2.0 Bridge integration contract
 
-**Status: DESIGN PROPOSAL — NOT IMPLEMENTED.** This document is based on a read of `HWcontrol2.0/bridge_service/src/main.go`, `main_test.go`, `bridge_service/go.mod`, and `SECURITY.md` on the current `main` branch. It defines requirements for a future integration; it does not claim these scanner features or protocol fields exist today.
+**Status: DESIGN PROPOSAL — PROTOCOL HELPERS IMPLEMENTED, LIVE INTEGRATION NOT IMPLEMENTED.** This document is based on a read of `HWcontrol2.0/bridge_service/src/main.go`, `main_test.go`, `bridge_service/go.mod`, and `SECURITY.md` on the current `main` branch. The protocol helper is isolated and must not be mistaken for a live Bridge action.
 
 ## Verified Bridge facts and integration blockers
 
@@ -17,6 +17,22 @@ Before implementation, choose and review one of these approaches:
 
 Do not choose one silently or make a runtime/toolchain change as a side effect of adding a scan action.
 
+## Protocol helper implemented for contract tests
+
+The isolated Go helper is `internal/scanprotocol/scan_request_v1.go`; the Dart counterpart is `gui_dashboard/lib/security/scan_request_v1.dart` in HWcontrol2.0. Neither is connected to the active Bridge protocol or GUI command flow. Their shared fixture is `internal/scanprotocol/testdata/scan_request_v1.json` in this repository and `gui_dashboard/test/fixtures/scan_request_v1.json` in HWcontrol2.0. The fixture key is a public test-only key and must never be used in production.
+
+Canonical UTF-8 payload fields, joined with a single LF byte and no trailing newline:
+
+1. `HWSECURITY-SCAN-V1`
+2. `scan`
+3. `scope_id` (lowercase allowlisted identifier; 1–64 characters)
+4. `read_only`
+5. positive Unix timestamp in milliseconds, base-10 with no leading zeroes
+6. nonce, exactly 32 hexadecimal characters and canonicalized to lowercase
+7. request ID, 1–64 ASCII letters, digits, dot, underscore, or hyphen
+
+The HMAC-SHA-256 tag is lowercase hexadecimal over exactly those UTF-8 bytes. The fixture's expected tag is `40cb94069c89c83fa53eab998eba51a30716793ba436543964c63f027b2f3cc3`. Both language tests must reject any changed signed field and malformed field. This protocol version is a proposal for scan requests only; it does not replace or reinterpret existing hardware-control signatures.
+
 ## Architecture boundary
 
 Keep the trust direction:
@@ -32,41 +48,13 @@ The scanner is a separate read-only security capability. It must not receive har
 - Ada/SPARK policy may add deterministic decision checks only after surrounding code supplies trustworthy facts. Boolean values received from a UI or arbitrary caller do not prove authentication, consent, signature validity, or replay protection.
 - AI output is explanatory only and cannot authorize a scan, update, remediation, or hardware action.
 
-## Proposed protocol extension
+## Proposed request/result
 
-These are design fields, not implemented API fields.
+Add a dedicated action such as `Scan Security` only after updating the Go Bridge validator, the Dart request signer, protocol tests, and all supported clients together. Do not repurpose `target`.
 
-### Authenticated request
+Prefer a Bridge-managed allowlisted scope identifier rather than an arbitrary path. Enforce limits on elapsed time, files, bytes read, findings, and diagnostic bytes. If a limit is reached, return `INCOMPLETE`, not `CLEAN`.
 
-Add a dedicated action such as `Scan Security` only after updating the Go Bridge validator, the Dart request signer, protocol tests, and any supported clients together. Do not repurpose the existing `target` field.
-
-The authenticated payload must bind every security-relevant scan field. A versioned canonical encoding should include at minimum:
-
-- protocol version and action;
-- an opaque scope identifier (prefer a Bridge-managed allowlisted scope over an arbitrary caller-provided path);
-- mode, initially only `read_only`;
-- timestamp, cryptographically random nonce, and request correlation identifier.
-
-The exact canonical encoding and cross-language test vectors must be specified before implementation. Adding a field without including it in the authenticated payload creates a request-tampering risk. Preserve backward compatibility deliberately and reject unknown protocol versions or unsupported fields.
-
-### Scope and resource limits
-
-- Require explicit user selection for any later arbitrary-path scan. Validate it in the Bridge, not only in the UI.
-- Prefer Bridge-managed scope identifiers mapped to known roots. Do not accept relative traversal, device paths, network shares, or symlink roots by default.
-- Enforce limits on elapsed time, number of files, total bytes read, findings, and diagnostic bytes. If a limit is reached, return `INCOMPLETE`, not `CLEAN`.
-- Run with least privilege. Do not elevate solely to increase scan coverage; permission failures remain incomplete.
-
-### Result
-
-Use a versioned result containing:
-
-- `status`: `CLEAN`, `FINDINGS`, `INCOMPLETE`, or `ERROR`;
-- `files_scanned`: non-negative count;
-- `findings`: path relative to the approved scan root, SHA-256 digest, and stable reason code;
-- `issues`: bounded, sanitized diagnostics; avoid secrets, full environment data, or unnecessary absolute paths;
-- `intelligence_version`: exact local intelligence version used, or absent when no intelligence was used.
-
-Semantics are fail-safe: any traversal/read error, resource-limit termination, missing required intelligence, invalid helper output, timeout, or incomplete enumeration must never be reported as `CLEAN`. A finding plus an error remains `INCOMPLETE` with findings preserved. A completed scan only means that implemented checks completed for the selected scope; it does not mean the device is malware-free.
+Use a versioned result containing `status` (`CLEAN`, `FINDINGS`, `INCOMPLETE`, `ERROR`), a non-negative file count, relative-path findings with SHA-256 and stable reason codes, bounded sanitized issues, and the exact local intelligence version if used. Any traversal/read error, limit termination, invalid helper output, timeout, or incomplete enumeration must never be reported as `CLEAN`. A completed scan only means implemented checks completed for the selected scope; it does not mean the device is malware-free.
 
 ## IPC and authorization requirements
 
@@ -84,12 +72,12 @@ The existing Ada package is an isolated policy unit, not a callable Bridge servi
 
 ## Implementation sequence and acceptance criteria
 
-1. **Toolchain decision:** choose scanner-library import versus fixed helper executable; document minimum Go/runtime requirements and package impact.
-2. **Protocol specification:** define canonical HMAC payload encoding and publish shared Go/Dart test vectors before changing either side.
-3. **Contract tests:** cover unauthenticated requests, tampered scope/mode, invalid/oversized paths, path traversal and symlinks, replayed requests, time/resource limits, unavailable scanner, malformed result data, and mixed findings/errors.
-4. **Adapter:** add a narrow scan adapter only after the toolchain decision. It must not expose arbitrary process execution or accept policy booleans from the UI.
-5. **Packaging:** package the scanner and required data through existing per-platform mechanisms only after integration tests pass. Do not bundle an unauthenticated or unsigned threat-intelligence feed.
-6. **Platform verification:** independently test Windows 10/11 x64, supported Debian/Ubuntu-family Linux x64, and macOS 14+ Apple Silicon. Unavailable environments remain explicitly unverified.
+1. Decide between scanner-library import and fixed helper executable; document minimum Go/runtime requirements and packaging impact.
+2. Run the shared Go and Dart HMAC fixture tests and publish the same canonical test vector before changing either live protocol.
+3. Add contract tests for unauthenticated requests, tampered scope/mode, invalid/oversized paths, path traversal and symlinks, replayed requests, time/resource limits, unavailable scanner, malformed results, and mixed findings/errors.
+4. Add a narrow scan adapter only after the toolchain decision. It must not expose arbitrary process execution or accept policy booleans from the UI.
+5. Package the scanner and required data only after integration tests pass. Do not bundle an unauthenticated or unsigned threat-intelligence feed.
+6. Independently test Windows 10/11 x64, supported Debian/Ubuntu-family Linux x64, and macOS 14+ Apple Silicon. Unavailable environments remain explicitly unverified.
 
 ## Explicit non-goals
 
